@@ -17,13 +17,14 @@ impl Interpreter {
     }
 
     pub fn run_prompt(&mut self) -> RLoxResult<()> {
-        let mut line = String::new();
         let stdin = io::stdin();
         let stdout = io::stdout();
 
         loop {
             print!("rlox> ");
             stdout.lock().flush()?;
+
+            let mut line = String::new();
             stdin.lock().read_line(&mut line)?;
 
             // When running a REPL, we don't want to return an error to
