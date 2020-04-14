@@ -6,7 +6,7 @@ pub enum RLoxError {
         kind: std::io::ErrorKind,
     },
     Source {
-        line: u32,
+        line: usize,
         location: String,
         message: String,
     },

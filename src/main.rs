@@ -4,6 +4,7 @@ use std::process;
 mod error;
 mod interpreter;
 mod scanner;
+mod token;
 
 use error::RLoxError;
 use interpreter::Interpreter;
