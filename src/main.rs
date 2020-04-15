@@ -7,19 +7,18 @@ mod scanner;
 mod token;
 
 use error::RLoxError;
-use interpreter::Interpreter;
+use interpreter::{run_file, run_prompt};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let mut interpreter = Interpreter::new();
 
     let err = if args.len() > 2 {
         println!("Usage: rlox [script]");
         process::exit(64);
     } else if args.len() == 2 {
-        interpreter.run_file(args[1].to_string())
+        run_file(args[1].to_string())
     } else {
-        interpreter.run_prompt()
+        run_prompt()
     };
 
     match err {
