@@ -1,4 +1,6 @@
+use rustyline::error::ReadlineError;
 use std::convert;
+use std::io::ErrorKind;
 
 #[derive(Debug)]
 pub enum RLoxError {
@@ -10,6 +12,8 @@ pub enum RLoxError {
         location: String,
         message: String,
     },
+    Interrupted,
+    EOF,
 }
 
 impl RLoxError {
@@ -31,6 +35,8 @@ impl std::fmt::Display for RLoxError {
                 location,
                 message,
             } => write!(f, "[{}] Error {}: {}", line, location, message),
+            RLoxError::Interrupted => write!(f, "Interrupted"),
+            RLoxError::EOF => write!(f, "End  of input"),
         }
     }
 }
@@ -41,6 +47,18 @@ impl convert::From<std::io::Error> for RLoxError {
     fn from(io_error: std::io::Error) -> Self {
         RLoxError::IO {
             kind: io_error.kind(),
+        }
+    }
+}
+
+impl convert::From<ReadlineError> for RLoxError {
+    fn from(error: ReadlineError) -> Self {
+        match error {
+            ReadlineError::Interrupted => RLoxError::Interrupted,
+            ReadlineError::Eof => RLoxError::EOF,
+            _ => RLoxError::IO {
+                kind: ErrorKind::Other,
+            },
         }
     }
 }

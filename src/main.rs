@@ -31,6 +31,14 @@ fn main() {
                 eprintln!("{}", src_error);
                 process::exit(65);
             }
+            RLoxError::Interrupted => {
+                eprintln!("Interrupted!");
+                process::exit(1);
+            }
+            RLoxError::EOF => {
+                eprintln!("Goodbye!");
+                process::exit(0);
+            }
         },
         Ok(()) => (),
     }

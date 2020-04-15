@@ -1,7 +1,9 @@
-use crate::error::RLoxResult;
+use crate::error::{RLoxError, RLoxResult};
 use crate::scanner::Scanner;
+
+use rustyline::Editor;
+
 use std::fs;
-use std::io::{self, BufRead, Write};
 
 pub fn run_file(path: String) -> RLoxResult<()> {
     let src = fs::read_to_string(&path)?;
@@ -10,19 +12,16 @@ pub fn run_file(path: String) -> RLoxResult<()> {
 }
 
 pub fn run_prompt() -> RLoxResult<()> {
-    let stdin = io::stdin();
-    let stdout = io::stdout();
+    let mut rl = Editor::<()>::new();
 
     loop {
-        print!("rlox> ");
-        stdout.lock().flush()?;
-
-        let mut line = String::new();
-        stdin.lock().read_line(&mut line)?;
-
-        // When running a REPL, we don't want to return an error to
-        // the main function. We want to reset the error state and move on.
-        run(line.clone()).unwrap();
+        let line = rl.readline("rlox> ")?;
+        rl.add_history_entry(line.to_string());
+        match run(line) {
+            Err(err @ RLoxError::Source { .. }) => eprintln!("{}", err),
+            err @ Err(_) => return err,
+            Ok(_) => (),
+        };
     }
 }
 
