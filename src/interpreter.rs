@@ -26,9 +26,8 @@ pub fn run_prompt() -> RLoxResult<()> {
 }
 
 fn run(src: String) -> RLoxResult<()> {
-    let mut scanner = Scanner::new(src);
-    let tokens = scanner.scan()?;
-    for token in tokens {
+    let scanner = Scanner::new(src);
+    for token in scanner {
         println!("{:?}", token);
     }
     Ok(())

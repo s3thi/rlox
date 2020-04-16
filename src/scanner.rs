@@ -3,7 +3,6 @@ use crate::token::{Token, TokenType};
 
 pub struct Scanner {
     src: String,
-    tokens: Vec<Token>,
     lexeme_start: usize,
     lexeme_current: usize,
     line: usize,
@@ -13,68 +12,59 @@ impl Scanner {
     pub fn new(src: String) -> Self {
         Self {
             src,
-            tokens: vec![],
             lexeme_start: 0,
             lexeme_current: 0,
             line: 1,
         }
     }
 
-    pub fn scan(&mut self) -> RLoxResult<Vec<Token>> {
-        while !self.is_at_end() {
-            self.lexeme_start = self.lexeme_current;
-            self.scan_token()?;
-        }
-
-        self.tokens
-            .push(Token::new(TokenType::EOF, "".to_string(), self.line));
-
-        Ok(self.tokens.clone())
-    }
-
     fn is_at_end(&self) -> bool {
         self.lexeme_current >= self.src.len()
     }
 
-    fn scan_token(&mut self) -> RLoxResult<()> {
+    fn scan_token(&mut self) -> RLoxResult<Token> {
+        if self.is_at_end() {
+            return Ok(Token::new(TokenType::EOF, "".to_string(), self.line));
+        }
+
         let next_char = self.advance();
         match next_char {
-            '(' => self.add_token(TokenType::LeftParen, self.build_lexeme_string()),
-            ')' => self.add_token(TokenType::RightParen, self.build_lexeme_string()),
-            '{' => self.add_token(TokenType::LeftBrace, self.build_lexeme_string()),
-            '}' => self.add_token(TokenType::RightBrace, self.build_lexeme_string()),
-            ',' => self.add_token(TokenType::Comma, self.build_lexeme_string()),
-            '.' => self.add_token(TokenType::Dot, self.build_lexeme_string()),
-            '-' => self.add_token(TokenType::Minus, self.build_lexeme_string()),
-            '+' => self.add_token(TokenType::Plus, self.build_lexeme_string()),
-            ';' => self.add_token(TokenType::Semicolon, self.build_lexeme_string()),
-            '*' => self.add_token(TokenType::Star, self.build_lexeme_string()),
+            '(' => self.make_token_result(TokenType::LeftParen),
+            ')' => self.make_token_result(TokenType::RightParen),
+            '{' => self.make_token_result(TokenType::LeftBrace),
+            '}' => self.make_token_result(TokenType::RightBrace),
+            ',' => self.make_token_result(TokenType::Comma),
+            '.' => self.make_token_result(TokenType::Dot),
+            '-' => self.make_token_result(TokenType::Minus),
+            '+' => self.make_token_result(TokenType::Plus),
+            ';' => self.make_token_result(TokenType::Semicolon),
+            '*' => self.make_token_result(TokenType::Star),
             '!' => {
                 if self.advance_if_match('=') {
-                    self.add_token(TokenType::BangEqual, self.build_lexeme_string())
+                    self.make_token_result(TokenType::BangEqual)
                 } else {
-                    self.add_token(TokenType::Bang, self.build_lexeme_string())
+                    self.make_token_result(TokenType::Bang)
                 }
             }
             '=' => {
                 if self.advance_if_match('=') {
-                    self.add_token(TokenType::EqualEqual, self.build_lexeme_string())
+                    self.make_token_result(TokenType::EqualEqual)
                 } else {
-                    self.add_token(TokenType::Equal, self.build_lexeme_string())
+                    self.make_token_result(TokenType::Equal)
                 }
             }
             '<' => {
                 if self.advance_if_match('=') {
-                    self.add_token(TokenType::LessEqual, self.build_lexeme_string())
+                    self.make_token_result(TokenType::LessEqual)
                 } else {
-                    self.add_token(TokenType::Less, self.build_lexeme_string())
+                    self.make_token_result(TokenType::Less)
                 }
             }
             '>' => {
                 if self.advance_if_match('=') {
-                    self.add_token(TokenType::GreaterEqual, self.build_lexeme_string())
+                    self.make_token_result(TokenType::GreaterEqual)
                 } else {
-                    self.add_token(TokenType::Greater, self.build_lexeme_string())
+                    self.make_token_result(TokenType::Greater)
                 }
             }
             '/' => {
@@ -82,15 +72,19 @@ impl Scanner {
                     while self.peek() != '\n' && !self.is_at_end() {
                         self.advance();
                     }
-                    Ok(())
+                    self.scan_token()
                 } else {
-                    self.add_token(TokenType::Slash, self.build_lexeme_string())
+                    self.make_token_result(TokenType::Slash)
                 }
             }
-            ' ' | '\r' | '\t' => Ok(()),
+            ' ' | '\r' | '\t' => {
+                self.collapse_scan();
+                self.scan_token()
+            }
             '\n' => {
                 self.line = self.line + 1;
-                Ok(())
+                self.collapse_scan();
+                self.scan_token()
             }
             '"' => self.parse_string(),
             _ => {
@@ -109,7 +103,7 @@ impl Scanner {
         }
     }
 
-    fn parse_identifier(&mut self) -> RLoxResult<()> {
+    fn parse_identifier(&mut self) -> RLoxResult<Token> {
         while self.peek().is_alphanumeric() || self.peek() == '_' {
             self.advance();
         }
@@ -136,12 +130,10 @@ impl Scanner {
             _ => TokenType::Identifier(lexeme.clone()),
         };
 
-        self.add_token(token, lexeme)?;
-
-        Ok(())
+        self.make_token_result(token)
     }
 
-    fn parse_string(&mut self) -> RLoxResult<()> {
+    fn parse_string(&mut self) -> RLoxResult<Token> {
         // Keep advancing until we read a closing quote or reach the end
         // of file.
         while self.peek() != '"' && !self.is_at_end() {
@@ -166,13 +158,10 @@ impl Scanner {
 
         // The arithmetic here is for exclusing the starting/ending quotes.
         let collected_string = self.src[self.lexeme_start + 1..self.lexeme_current - 1].to_string();
-        let lexeme = self.src[self.lexeme_start..self.lexeme_current].to_string();
-        self.add_token(TokenType::String(collected_string), lexeme)?;
-
-        Ok(())
+        self.make_token_result(TokenType::String(collected_string))
     }
 
-    fn parse_number(&mut self) -> RLoxResult<()> {
+    fn parse_number(&mut self) -> RLoxResult<Token> {
         while self.peek().is_digit(10) {
             self.advance();
         }
@@ -187,9 +176,7 @@ impl Scanner {
 
         let lexeme = self.src[self.lexeme_start..self.lexeme_current].to_string();
         let parsed_number: f64 = lexeme.parse().unwrap();
-        self.add_token(TokenType::Number(parsed_number), lexeme)?;
-
-        Ok(())
+        self.make_token_result(TokenType::Number(parsed_number))
     }
 
     fn advance(&mut self) -> char {
@@ -226,12 +213,32 @@ impl Scanner {
         }
     }
 
-    fn add_token(&mut self, token_type: TokenType, lexeme: String) -> RLoxResult<()> {
-        self.tokens.push(Token::new(token_type, lexeme, self.line));
-        Ok(())
+    fn make_token_result(&mut self, token_type: TokenType) -> RLoxResult<Token> {
+        Ok(Token::new(
+            token_type,
+            self.build_lexeme_string(),
+            self.line,
+        ))
     }
 
     fn build_lexeme_string(&self) -> String {
         self.src[self.lexeme_start..self.lexeme_current].to_string()
+    }
+
+    fn collapse_scan(&mut self) {
+        self.lexeme_start = self.lexeme_current;
+    }
+}
+
+impl Iterator for Scanner {
+    type Item = RLoxResult<Token>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if !self.is_at_end() {
+            self.collapse_scan();
+            Some(self.scan_token())
+        } else {
+            None
+        }
     }
 }
