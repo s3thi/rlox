@@ -1,6 +1,7 @@
 use std::env;
 use std::process;
 
+mod ast;
 mod error;
 mod interpreter;
 mod scanner;
