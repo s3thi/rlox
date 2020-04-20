@@ -24,7 +24,7 @@ impl Scanner {
 
     fn scan_token(&mut self) -> RLoxResult<Token> {
         if self.is_at_end() {
-            return Ok(Token::new(TokenType::EOF, "".to_string(), self.line));
+            return Ok(Token::new(TokenType::EOF, Some(self.line)));
         }
 
         let next_char = self.advance();
@@ -214,15 +214,7 @@ impl Scanner {
     }
 
     fn make_token_result(&mut self, token_type: TokenType) -> RLoxResult<Token> {
-        Ok(Token::new(
-            token_type,
-            self.build_lexeme_string(),
-            self.line,
-        ))
-    }
-
-    fn build_lexeme_string(&self) -> String {
-        self.src[self.lexeme_start..self.lexeme_current].to_string()
+        Ok(Token::new(token_type, Some(self.line)))
     }
 
     fn collapse_scan(&mut self) {
