@@ -47,6 +47,16 @@ pub enum ASTNode {
     Unary(UnaryNode),
 }
 
+impl ASTNode {
+    pub fn pretty_print(&self) -> String {
+        let mut pretty = String::new();
+        pretty.push_str("digraph G {\n");
+        pretty_print_recursive(self, &mut pretty, 0);
+        pretty.push_str("}");
+        pretty
+    }
+}
+
 fn make_graphviz_label(node: &ASTNode, depth: u32) -> String {
     match node {
         ASTNode::Binary(node) => format!("{}_{}", node.operator, depth),
@@ -60,7 +70,10 @@ fn pretty_print_recursive(node: &ASTNode, acc: &mut String, depth: u32) {
     let label = make_graphviz_label(node, depth);
     match node {
         ASTNode::Binary(bin_node) => {
-            acc.push_str(&format!("\"{}\"[label=\"{}\"];\n", label, bin_node.operator));
+            acc.push_str(&format!(
+                "\"{}\"[label=\"{}\"];\n",
+                label, bin_node.operator
+            ));
 
             pretty_print_recursive(&bin_node.left, acc, depth + 1);
             pretty_print_recursive(&bin_node.right, acc, depth + 1);
@@ -81,25 +94,14 @@ fn pretty_print_recursive(node: &ASTNode, acc: &mut String, depth: u32) {
             acc.push_str(&format!("\"{}\"[label=\"{}\"];\n", label, lit_node.value));
         }
         ASTNode::Unary(unary_node) => {
-            acc.push_str(&format!("\"{}\"[label=\"{}\"];\n", label, unary_node.operator));
+            acc.push_str(&format!(
+                "\"{}\"[label=\"{}\"];\n",
+                label, unary_node.operator
+            ));
             pretty_print_recursive(&unary_node.child, acc, depth + 1);
 
             let label_child = make_graphviz_label(&unary_node.child, depth + 1);
             acc.push_str(&format!("\"{}\" -> \"{}\";\n", label, label_child));
         }
     };
-}
-
-pub trait PrettyPrinter {
-    fn pretty_print(&self) -> String;
-}
-
-impl PrettyPrinter for ASTNode {
-    fn pretty_print(&self) -> String {
-        let mut pretty = String::new();
-        pretty.push_str("digraph G {\n");
-        pretty_print_recursive(self, &mut pretty, 0);
-        pretty.push_str("}");
-        pretty
-    }
 }
