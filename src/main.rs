@@ -4,6 +4,7 @@ use std::process;
 mod ast;
 mod error;
 mod interpreter;
+mod parser;
 mod scanner;
 mod token;
 

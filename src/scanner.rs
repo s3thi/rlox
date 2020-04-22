@@ -6,6 +6,7 @@ pub struct Scanner {
     lexeme_start: usize,
     lexeme_current: usize,
     line: usize,
+    is_iter_eof: bool,
 }
 
 impl Scanner {
@@ -15,6 +16,7 @@ impl Scanner {
             lexeme_start: 0,
             lexeme_current: 0,
             line: 1,
+            is_iter_eof: false,
         }
     }
 
@@ -24,7 +26,7 @@ impl Scanner {
 
     fn scan_token(&mut self) -> RLoxResult<Token> {
         if self.is_at_end() {
-            return Ok(Token::new(TokenType::EOF, Some(self.line)));
+            return Ok(Token::new(TokenType::EOF, None, Some(self.line)));
         }
 
         let next_char = self.advance();
@@ -94,8 +96,8 @@ impl Scanner {
                     self.parse_identifier()
                 } else {
                     Err(RLoxError::Source {
-                        line: self.line,
-                        location: "".to_string(),
+                        line: Some(self.line),
+                        context: Some(next_char.to_string()),
                         message: format!("unknown character: {}", next_char),
                     })
                 }
@@ -130,7 +132,7 @@ impl Scanner {
             _ => TokenType::Identifier(lexeme.clone()),
         };
 
-        self.make_token_result(token)
+        Ok(Token::new(token, Some(lexeme), Some(self.line)))
     }
 
     fn parse_string(&mut self) -> RLoxResult<Token> {
@@ -147,8 +149,8 @@ impl Scanner {
         // there was an unterminated string somewhere.
         if self.is_at_end() {
             return Err(RLoxError::source(
-                self.line,
-                "".to_string(),
+                Some(self.line),
+                None,
                 "unterminated string".to_string(),
             ));
         }
@@ -158,7 +160,11 @@ impl Scanner {
 
         // The arithmetic here is for exclusing the starting/ending quotes.
         let collected_string = self.src[self.lexeme_start + 1..self.lexeme_current - 1].to_string();
-        self.make_token_result(TokenType::String(collected_string))
+        Ok(Token::new(
+            TokenType::String(collected_string.clone()),
+            Some(collected_string),
+            Some(self.line),
+        ))
     }
 
     fn parse_number(&mut self) -> RLoxResult<Token> {
@@ -176,7 +182,11 @@ impl Scanner {
 
         let lexeme = self.src[self.lexeme_start..self.lexeme_current].to_string();
         let parsed_number: f64 = lexeme.parse().unwrap();
-        self.make_token_result(TokenType::Number(parsed_number))
+        Ok(Token::new(
+            TokenType::Number(parsed_number),
+            Some(lexeme),
+            Some(self.line),
+        ))
     }
 
     fn advance(&mut self) -> char {
@@ -214,7 +224,7 @@ impl Scanner {
     }
 
     fn make_token_result(&mut self, token_type: TokenType) -> RLoxResult<Token> {
-        Ok(Token::new(token_type, Some(self.line)))
+        Ok(Token::new(token_type, None, Some(self.line)))
     }
 
     fn collapse_scan(&mut self) {
@@ -226,9 +236,19 @@ impl Iterator for Scanner {
     type Item = RLoxResult<Token>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if !self.is_at_end() {
+        if !self.is_iter_eof {
             self.collapse_scan();
-            Some(self.scan_token())
+            let result = self.scan_token();
+
+            match &result {
+                Ok(token) => match token.token_type {
+                    TokenType::EOF => self.is_iter_eof = true,
+                    _ => (),
+                },
+                Err(_) => (),
+            };
+
+            Some(result)
         } else {
             None
         }

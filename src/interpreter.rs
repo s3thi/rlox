@@ -1,5 +1,7 @@
 use crate::error::{RLoxError, RLoxResult};
+use crate::parser::Parser;
 use crate::scanner::Scanner;
+use crate::token::Token;
 
 use rustyline::Editor;
 
@@ -27,8 +29,10 @@ pub fn run_prompt() -> RLoxResult<()> {
 
 fn run(src: String) -> RLoxResult<()> {
     let scanner = Scanner::new(src);
-    for token in scanner {
-        println!("{:?}", token);
-    }
+    let tokens: Result<Vec<Token>, RLoxError> = scanner.collect();
+    // println!("{:?}", tokens.unwrap());
+    let mut parser = Parser::new(tokens.unwrap());
+    let ast = parser.parse();
+    println!("{}", ast.pretty_print());
     Ok(())
 }

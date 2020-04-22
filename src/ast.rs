@@ -1,14 +1,14 @@
-use crate::token::TokenType;
+use crate::token::{Token, TokenType};
 
 #[derive(Debug)]
 pub struct BinaryNode {
     left: Box<ASTNode>,
-    operator: TokenType,
+    operator: Token,
     right: Box<ASTNode>,
 }
 
 impl BinaryNode {
-    pub fn new(left: ASTNode, operator: TokenType, right: ASTNode) -> Self {
+    pub fn new(left: ASTNode, operator: Token, right: ASTNode) -> Self {
         BinaryNode {
             left: Box::new(left),
             operator,
@@ -18,8 +18,16 @@ impl BinaryNode {
 }
 
 #[derive(Debug)]
-struct GroupingNode {
+pub struct GroupingNode {
     child: Box<ASTNode>,
+}
+
+impl GroupingNode {
+    pub fn new(child: ASTNode) -> Self {
+        GroupingNode {
+            child: Box::new(child),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -34,9 +42,18 @@ impl LiteralNode {
 }
 
 #[derive(Debug)]
-struct UnaryNode {
-    operator: TokenType,
+pub struct UnaryNode {
+    operator: Token,
     child: Box<ASTNode>,
+}
+
+impl UnaryNode {
+    pub fn new(operator: Token, child: ASTNode) -> Self {
+        UnaryNode {
+            operator,
+            child: Box::new(child),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -45,6 +62,7 @@ pub enum ASTNode {
     Grouping(GroupingNode),
     Literal(LiteralNode),
     Unary(UnaryNode),
+    Error,
 }
 
 impl ASTNode {
@@ -59,10 +77,11 @@ impl ASTNode {
 
 fn make_graphviz_label(node: &ASTNode, depth: u32) -> String {
     match node {
-        ASTNode::Binary(node) => format!("{}_{}", node.operator, depth),
+        ASTNode::Binary(node) => format!("{}_{}", node.operator.token_type, depth),
         ASTNode::Grouping(_) => format!("group_{}", depth),
         ASTNode::Literal(node) => format!("{}_{}", node.value, depth),
-        ASTNode::Unary(node) => format!("{}_{}", node.operator, depth),
+        ASTNode::Unary(node) => format!("{}_{}", node.operator.token_type, depth),
+        ASTNode::Error => format!("ERROR_{}", depth),
     }
 }
 
@@ -72,7 +91,7 @@ fn pretty_print_recursive(node: &ASTNode, acc: &mut String, depth: u32) {
         ASTNode::Binary(bin_node) => {
             acc.push_str(&format!(
                 "\"{}\"[label=\"{}\"];\n",
-                label, bin_node.operator
+                label, bin_node.operator.token_type
             ));
 
             pretty_print_recursive(&bin_node.left, acc, depth + 1);
@@ -96,12 +115,15 @@ fn pretty_print_recursive(node: &ASTNode, acc: &mut String, depth: u32) {
         ASTNode::Unary(unary_node) => {
             acc.push_str(&format!(
                 "\"{}\"[label=\"{}\"];\n",
-                label, unary_node.operator
+                label, unary_node.operator.token_type
             ));
             pretty_print_recursive(&unary_node.child, acc, depth + 1);
 
             let label_child = make_graphviz_label(&unary_node.child, depth + 1);
             acc.push_str(&format!("\"{}\" -> \"{}\";\n", label, label_child));
+        }
+        ASTNode::Error => {
+            acc.push_str(&format!("\"{}\"[label=\"{}\"];\n", label, "ERROR"));
         }
     };
 }

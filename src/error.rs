@@ -8,8 +8,8 @@ pub enum RLoxError {
         kind: std::io::ErrorKind,
     },
     Source {
-        line: usize,
-        location: String,
+        line: Option<usize>,
+        context: Option<String>,
         message: String,
     },
     Interrupted,
@@ -17,10 +17,10 @@ pub enum RLoxError {
 }
 
 impl RLoxError {
-    pub fn source(line: usize, location: String, message: String) -> Self {
+    pub fn source(line: Option<usize>, context: Option<String>, message: String) -> Self {
         RLoxError::Source {
             line,
-            location,
+            context,
             message,
         }
     }
@@ -32,9 +32,15 @@ impl std::fmt::Display for RLoxError {
             RLoxError::IO { kind } => write!(f, "IO error: {:?}", kind),
             RLoxError::Source {
                 line,
-                location,
+                context,
                 message,
-            } => write!(f, "[{}] Error {}: {}", line, location, message),
+            } => write!(
+                f,
+                "[{}] Error {}: {}",
+                line.unwrap_or(0),
+                context.clone().unwrap_or("".to_string()),
+                message
+            ),
             RLoxError::Interrupted => write!(f, "Interrupted"),
             RLoxError::EOF => write!(f, "End  of input"),
         }
